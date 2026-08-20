@@ -3,26 +3,28 @@ tracking:
     events:
       - modify
     pipeline:
-      - reactor: hash_changed
-        args:
-          algoritm: sha256
-        actions:
-          - name: write_vault
-            args:
-              secret_path: secret/example/config
-              secret_name: <file name>
+      reactor: 
+        - name: hash_changed
+          args:
+            algoritm: sha256
+          actions:
+            - name: write_vault
+              args:
+                secret_path: secret/example/config
+                secret_name: <file name>
   - path: /etc/example/configs
     type: directory
-    file_name_filter: *.yml|*.yaml
+    file_name_filter: "*.yml|*.yaml"
     events:
       - modify
       - create
     pipeline:
-      - reactor: hash_changed
-        args:
-          algoritm: sha256
-        actions:
-          - name: write_vault
-            args:
-              secret_path: secret/example/config
-              secret_name: <file_name>
+      reactor: 
+        - name: hash_changed
+          args:
+            algoritm: sha256
+          actions:
+            - name: write_vault
+              args:
+                secret_path: secret/example/config
+                secret_name: <file_name>
