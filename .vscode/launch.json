@@ -1,0 +1,18 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug inotify-watchman",
+      "type": "go",
+      "request": "launch",
+      "mode": "debug",
+      "program": "${workspaceFolder}/cmd/inotify-watchman",
+      "cwd": "${workspaceFolder}",
+      "args": [
+        "-C",
+        "${workspaceFolder}/configs/example.yml",
+        "--show-config"
+      ]
+    }
+  ]
+}

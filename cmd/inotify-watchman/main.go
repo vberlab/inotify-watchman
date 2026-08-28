@@ -3,8 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log/slog"
 	"os"
+	"os/signal"
+	"syscall"
 
+	"github.com/vberlabs/inotify-watchman/internal"
 	"github.com/vberlabs/inotify-watchman/internal/config"
 	"gopkg.in/yaml.v3"
 )
@@ -51,5 +55,19 @@ func main() {
 		}
 		fmt.Print(string(out))
 	}
+
+	for _, trackCfg := range cfg.Tracking {
+		go internal.WatcherHead(trackCfg, cfg.WatcherExitOnError)
+	}
+
+	signalChannel := make(chan os.Signal, 1)
+	signal.Notify(
+		signalChannel,
+		os.Interrupt,
+		syscall.SIGTERM,
+	)
+
+	receivedSignal := <-signalChannel
+	slog.Info("Shutdown signal received", "signal", receivedSignal)
 
 }

@@ -1,5 +1,5 @@
 tracking:
-  - path: /etc/example/config.yml
+  - path: /tmp/example/config.yml
     events:
       - modify
     pipeline:
@@ -12,7 +12,7 @@ tracking:
               args:
                 secret_path: secret/example/config
                 secret_name: <file name>
-  - path: /etc/example/configs
+  - path: /tmp/example/configs
     type: directory
     file_name_filter: "*.yml|*.yaml"
     events:
