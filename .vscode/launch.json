@@ -10,7 +10,7 @@
       "cwd": "${workspaceFolder}",
       "args": [
         "-C",
-        "${workspaceFolder}/configs/example.yml",
+        "${workspaceFolder}/configs/yet-another-example.yml",
         "--show-config"
       ]
     }

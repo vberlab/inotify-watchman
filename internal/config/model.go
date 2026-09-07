@@ -6,10 +6,11 @@ type Config struct {
 }
 
 type Tracking struct {
-	Path     string   `yaml:"path"`
-	FileType string   `yaml:"type"`
-	Events   []Events `yaml:"events"`
-	Pipeline Pipeline `yaml:"pipeline"`
+	Path           string   `yaml:"path"`
+	FileType       string   `yaml:"type"`
+	FileNameFilter string   `yaml:"file_name_filter"`
+	Events         []Events `yaml:"events"`
+	Pipeline       Pipeline `yaml:"pipeline"`
 }
 
 type Pipeline struct {

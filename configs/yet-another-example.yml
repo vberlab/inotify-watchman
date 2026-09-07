@@ -6,31 +6,23 @@ tracking:
       reactor: 
         - name: hash-changed
           args:
-            algoritm: sha256
+            algorithm: sha256
           actions:
             - name: write_vault
               args:
                 secret_path: secret/example/config
                 secret_name: <file name>
-        - name: search_string
-          args:
-            string_pattern: "example"
-          actions:
-            - name: write_vault
-              args:
-                secret_path: seacret/example/config
-                secret_name: <file_name>
   - path: /tmp/example/configs
     type: directory
-    file_name_filter: "*.yml|*.yaml"
+    file_name_filter: '\.yml$'
     events:
       - modify
       - create
     pipeline:
       reactor: 
-        - name: hash_changed
+        - name: hash-changed
           args:
-            algoritm: sha256
+            algorithm: sha256
           actions:
             - name: write_vault
               args:

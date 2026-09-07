@@ -1,7 +1,12 @@
 package reactor
 
-import "github.com/vberlabs/inotify-watchman/internal/reactor"
+import "fmt"
 
-var ReactorCollection = map[string]Reactor{
-	"hash-changed": reactor.HashChanged,
+func NewReactor(name string) (Reactor, error) {
+	switch name {
+	case "hash-changed":
+		return NewHashChanged(), nil
+	default:
+		return nil, fmt.Errorf("Unknown reactor: %s", name)
+	}
 }

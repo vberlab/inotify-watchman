@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"sync/atomic"
 	"syscall"
 
 	"github.com/vberlabs/inotify-watchman/internal"
@@ -32,10 +33,17 @@ func readConfig(configPath string, config *config.Config) error {
 }
 
 func main() {
+	var nextRoutineID atomic.Uint32
 	configPath := flag.String("C", "", "Path to config file")
 	showConfig := flag.Bool("show-config", false, "Show loaded configuration")
+	showDebug := flag.Bool("debug", false, "Show debug messages")
 	flag.Parse()
 
+	if *showDebug {
+		logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
+		slog.SetDefault(logger)
+		slog.Debug("Logging level set to Debug")
+	}
 	if *configPath == "" {
 		flag.Usage()
 		os.Exit(1)
@@ -57,7 +65,8 @@ func main() {
 	}
 
 	for _, trackCfg := range cfg.Tracking {
-		go internal.WatcherHead(trackCfg, cfg.WatcherExitOnError)
+		routineID := nextRoutineID.Add(1)
+		go internal.WatcherHead(trackCfg, cfg.WatcherExitOnError, routineID)
 	}
 
 	signalChannel := make(chan os.Signal, 1)
