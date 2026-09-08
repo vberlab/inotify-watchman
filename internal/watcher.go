@@ -6,6 +6,7 @@ import (
 	"regexp"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/vberlabs/inotify-watchman/internal/action"
 	"github.com/vberlabs/inotify-watchman/internal/config"
 	"github.com/vberlabs/inotify-watchman/internal/reactor"
 )
@@ -93,4 +94,37 @@ func watchEvents(watcher *fsnotify.Watcher, event *fsnotify.Event, events []conf
 func execReactor(event *fsnotify.Event, rCtx *reactor.ReactorCtx, logger *slog.Logger) (bool, error) {
 	logger.Debug(fmt.Sprintf("Execute reactor %s on %s\n", rCtx.Reactor.ID(), event.Name))
 	return rCtx.Reactor.CheckCondition(rCtx.ReactorCfgArgs, event.Name, logger)
+}
+
+func executePipelineActions(event *fsnotify.Event, cfgFileType string, cfgPath string, actionsCfg []config.Action, logger *slog.Logger, reactorName string) (map[string]string, error) {
+	var act action.Action
+	var err error
+	var out string
+	var results = make(map[string]string)
+	var actArgs *action.ActionArgs
+	var extArgsPack = map[string]any{
+		"config-file-type": cfgFileType,
+		"config-path":      cfgPath,
+		"reactorName":      reactorName,
+		"event-file-name":  event.Name,
+	}
+	logger.Debug(fmt.Sprintf("Start actions because reactor %s taken true condition", reactorName))
+	for _, actCfg := range actionsCfg {
+		logger.Debug(fmt.Sprintf("Search %s action in actions collections", actCfg.Name))
+		act, err = action.NewAction(actCfg.Name)
+		if err != nil {
+			return nil, err
+		}
+		actArgs, err = act.PrepareArgs(logger, extArgsPack, actCfg.Args)
+		if err != nil {
+			return nil, err
+		}
+		out, err = act.Execute(*actArgs, logger)
+		if err != nil {
+			return nil, err
+		}
+		slog.Debug(fmt.Sprintf("Result output of action %s: %s", actCfg.Name, out))
+		results[actCfg.Name] = out
+	}
+	return results, nil
 }
