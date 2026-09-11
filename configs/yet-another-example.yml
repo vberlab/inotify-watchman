@@ -3,15 +3,15 @@ tracking:
     events:
       - modify
     pipeline:
+      event_queue_size: 5
       reactor: 
         - name: hash-changed
           args:
             algorithm: sha256
           actions:
-            - name: write_vault
+            - name: hello-action
               args:
-                secret_path: secret/example/config
-                secret_name: <file name>
+                test_args: "test_value"
   - path: /tmp/example/configs
     type: directory
     file_name_filter: '\.yml$'

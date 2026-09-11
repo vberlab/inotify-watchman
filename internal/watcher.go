@@ -17,12 +17,15 @@ func WatcherHead(cfg config.Tracking, exitOnError bool, routineID uint32) error 
 	var watcherError error
 	var eventRecived bool
 	var event fsnotify.Event
+	var eventsQueue []fsnotify.Event
+	var eventsReactorCondition []fsnotify.Event
 	var reactors []reactor.ReactorCtx
 	var fileNamePetternCompile regexp.Regexp
-
+	// Add ID to logger
 	logger := slog.With(
 		"routine_id", routineID,
 	)
+	// Init fsnotify watcher
 	watcher, watcherError = fsnotify.NewWatcher()
 	if watcherError != nil {
 		return watcherError
@@ -36,13 +39,14 @@ func WatcherHead(cfg config.Tracking, exitOnError bool, routineID uint32) error 
 	if cfg.FileType == "directory" {
 		fileNamePetternCompile = *regexp.MustCompile(cfg.FileNameFilter)
 	}
+
 	// Make reactors
 	for _, reactor_cfg := range cfg.Pipeline.Reactor {
 		r, err := reactor.NewReactor(reactor_cfg.Name)
 		if err != nil {
 			logger.Error(fmt.Sprintf("%s: Reactor %s not found in program collection", cfg.Path, reactor_cfg.Name))
 		}
-		reactors = append(reactors, reactor.ReactorCtx{Reactor: r, ReactorCfgArgs: reactor_cfg.Args})
+		reactors = append(reactors, reactor.ReactorCtx{Reactor: r, ReactorCfgArgs: reactor_cfg.Args, ReactorActionsCfg: reactor_cfg.Actions})
 	}
 	// Watch events
 	slog.Debug(fmt.Sprintf("%s: Start watching events", cfg.Path))
@@ -53,6 +57,7 @@ func WatcherHead(cfg config.Tracking, exitOnError bool, routineID uint32) error 
 				return watcherError
 			}
 		}
+		// Add event to qeue
 		if eventRecived {
 			if cfg.FileType == "directory" {
 				if !fileNamePetternCompile.MatchString(event.Name) {
@@ -61,14 +66,36 @@ func WatcherHead(cfg config.Tracking, exitOnError bool, routineID uint32) error 
 				}
 				logger.Debug(fmt.Sprintf("%s:File name %s matched with %s", cfg.Path, event.Name, cfg.FileNameFilter))
 			}
-			for _, rCtx := range reactors {
-				logger.Debug(fmt.Sprintf("%s:Probe reactor %s", cfg.Path, rCtx.Reactor.ID()))
-				_, err := execReactor(&event, &rCtx, logger)
+			eventsQueue = append(eventsQueue, event)
+		}
+		logger.Debug(fmt.Sprintf("Fsnotify Queue len is %d. Config queue len is %d", len(eventsQueue), cfg.Pipeline.EventQueueSize))
+		if len(eventsQueue) >= int(cfg.Pipeline.EventQueueSize) {
+			for _, reactorItem := range reactors {
+				for _, eventQItem := range eventsQueue {
+					logger.Debug(fmt.Sprintf("Probe reactor %s condition for %s", reactorItem.Reactor.ID(), eventQItem.Name))
+					rCondition, err := execReactor(&eventQItem, &reactorItem, logger)
+					if err != nil {
+						logger.Error(err.Error())
+					}
+					if !rCondition {
+						slog.Debug("Reactor %s condition for path %s false", reactorItem.Reactor.ID(), eventQItem.Name)
+						continue
+					}
+					eventsReactorCondition = append(eventsReactorCondition, eventQItem)
+				}
+				logger.Debug(fmt.Sprintf("Try reactor %s actions", reactorItem.Reactor.ID()))
+				actionsResults, err := executePipelineActions(eventsReactorCondition, cfg.FileType, cfg.Path, reactorItem.ReactorActionsCfg, logger, reactorItem.Reactor.ID())
 				if err != nil {
 					logger.Error(err.Error())
-					return err
 				}
+				for resultName, resultOut := range actionsResults {
+					logger.Debug(fmt.Sprintf("(Reactor)%s:(Action)%s:%s", reactorItem.Reactor.ID(), resultName, resultOut))
+				}
+				eventsReactorCondition = eventsReactorCondition[:0]
+				logger.Debug(fmt.Sprintf("Reset len of eventsConditions for next reactors. Len is %d", len(eventsReactorCondition)))
 			}
+			eventsQueue = eventsQueue[:0]
+			logger.Debug(fmt.Sprintf("Reset events queue len. Len is %d", len(eventsQueue)))
 		}
 	}
 }
@@ -96,34 +123,28 @@ func execReactor(event *fsnotify.Event, rCtx *reactor.ReactorCtx, logger *slog.L
 	return rCtx.Reactor.CheckCondition(rCtx.ReactorCfgArgs, event.Name, logger)
 }
 
-func executePipelineActions(event *fsnotify.Event, cfgFileType string, cfgPath string, actionsCfg []config.Action, logger *slog.Logger, reactorName string) (map[string]string, error) {
-	var act action.Action
-	var err error
-	var out string
-	var results = make(map[string]string)
-	var actArgs *action.ActionArgs
-	var extArgsPack = map[string]any{
+func executePipelineActions(events []fsnotify.Event, cfgFileType string, cfgPath string, actionsCfg []config.Action, logger *slog.Logger, reactorName string) (map[string]string, error) {
+	var actionExtArs = map[string]any{
 		"config-file-type": cfgFileType,
 		"config-path":      cfgPath,
 		"reactorName":      reactorName,
-		"event-file-name":  event.Name,
+		"events":           events,
 	}
-	logger.Debug(fmt.Sprintf("Start actions because reactor %s taken true condition", reactorName))
+	var results = make(map[string]string)
 	for _, actCfg := range actionsCfg {
-		logger.Debug(fmt.Sprintf("Search %s action in actions collections", actCfg.Name))
-		act, err = action.NewAction(actCfg.Name)
+		logger.Debug(fmt.Sprintf("Search action %s in coollection", actCfg.Name))
+		act, err := action.NewAction(actCfg.Name)
 		if err != nil {
 			return nil, err
 		}
-		actArgs, err = act.PrepareArgs(logger, extArgsPack, actCfg.Args)
+		actArgs, err := act.PrepareArgs(logger, actionExtArs, actCfg.Args)
 		if err != nil {
 			return nil, err
 		}
-		out, err = act.Execute(*actArgs, logger)
+		out, err := act.Execute(*actArgs, logger)
 		if err != nil {
 			return nil, err
 		}
-		slog.Debug(fmt.Sprintf("Result output of action %s: %s", actCfg.Name, out))
 		results[actCfg.Name] = out
 	}
 	return results, nil

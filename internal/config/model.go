@@ -14,7 +14,8 @@ type Tracking struct {
 }
 
 type Pipeline struct {
-	Reactor []Reactor `yaml:"reactor"`
+	Reactor        []Reactor `yaml:"reactor"`
+	EventQueueSize int32     `yaml:"event_queue_size"`
 }
 
 type Reactor struct {
