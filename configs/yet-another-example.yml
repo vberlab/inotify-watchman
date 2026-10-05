@@ -14,17 +14,22 @@ tracking:
                 test_args: "test_value"
   - path: /tmp/example/configs
     type: directory
-    file_name_filter: '\.yml$'
+    file_name_filter: '\.crt$'
     events:
       - modify
       - create
     pipeline:
+      event_queue_size: 5
       reactor: 
         - name: hash-changed
           args:
             algorithm: sha256
           actions:
-            - name: write_vault
+            - name: hello-action
               args:
-                secret_path: secret/example/config
-                secret_name: <file_name>
+                hello-text: "This is hello action"
+            - name: archive-file
+              args:
+                archive-destination: /tmp/inotify-archive-files/
+                with-file-extensions:
+                  - ".key"

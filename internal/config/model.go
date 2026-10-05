@@ -15,16 +15,20 @@ type Tracking struct {
 
 type Pipeline struct {
 	Reactor        []Reactor `yaml:"reactor"`
-	EventQueueSize int32     `yaml:"event_queue_size"`
+	EventQueueSize int       `yaml:"event_queue_size"`
 }
 
 type Reactor struct {
-	Name    string         `yaml:"name"`
-	Args    map[string]any `yaml:"args"`
-	Actions []Action       `yaml:"actions"`
+	Name             string         `yaml:"name"`
+	Args             map[string]any `yaml:"args"`
+	Actions          []Action       `yaml:"actions"`
+	IgnoreErrors     bool           `yaml:"ignore_errors"`
+	IgnoreArgsErrors bool           `yaml:"ignore_args_errors"`
 }
 
 type Action struct {
-	Name string         `yaml:"name"`
-	Args map[string]any `yaml:"args"`
+	Name             string         `yaml:"name"`
+	Args             map[string]any `yaml:"args"`
+	IgnoreErrors     bool           `yaml:"ignore_errors"`
+	IgnoreArgsErrors bool           `yaml:"ignore_args_errors"`
 }

@@ -66,7 +66,7 @@ func main() {
 
 	for _, trackCfg := range cfg.Tracking {
 		routineID := nextRoutineID.Add(1)
-		go internal.WatcherHead(trackCfg, cfg.WatcherExitOnError, routineID)
+		go internal.Watcher(trackCfg, cfg.WatcherExitOnError, routineID)
 	}
 
 	signalChannel := make(chan os.Signal, 1)
