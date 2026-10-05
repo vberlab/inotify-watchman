@@ -1,0 +1,11 @@
+# virt-lightning.yaml
+- name: inotify-watchman-test
+  distro: debian-13
+  memory: 2048
+  vcpus: 2
+  groups:
+    - test
+  disks:
+    - size: 15
+  networks:
+    - network: virt-lightning
